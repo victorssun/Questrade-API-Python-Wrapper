@@ -5,4 +5,4 @@ Requires Selenium to open Questrade to grab API token access. Saves API token fo
 
 For others use: have to run initially on Windows with Selenium to grab the first API token. change directories and paths.
 
-Last modified: completed project
+Last modified: completed project.
