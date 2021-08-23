@@ -1,0 +1,8 @@
+.idea/
+.vscode/
+*.pyc
+*__pycache__/
+*.pickle
+*.json
+*.png
+*.db
