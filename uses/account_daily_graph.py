@@ -249,6 +249,13 @@ def candles2df(token, name, datestring, interval):
 
 positions_daily, balances_daily, df_trades, df_returns = pickle.load(open('%saccount_data.pickle' % direct_data, 'rb'))
 
+# mask data for public
+if False:
+    positions_daily = accounts.AccountsUtils.randomize_dataframe(positions_daily)
+    balances_daily = accounts.AccountsUtils.randomize_dataframe(balances_daily)
+    df_trades = accounts.AccountsUtils.randomize_dataframe(df_trades)
+    df_returns = accounts.AccountsUtils.randomize_dataframe(df_returns)
+
 # generate instance of accounts
 token = accounts.QuestradeAccounts(direct_token)
 

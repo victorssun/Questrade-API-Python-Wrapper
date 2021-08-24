@@ -43,43 +43,34 @@ pickle_fn = pickle.load(open(pickle_fn, 'rb'), encoding='latin1')
 
 # save daily data to pickle if running on linux, email is sent every friday
 if os.name == 'posix':
-    try:
+    positions_daily, balances_daily, df_trades, df_returns = pickle.load(open('%saccount_data.pickle' % direct_data, 'rb'), encoding='latin1')
 
-        positions_daily, balances_daily, df_trades, df_returns = pickle.load(open('%saccount_data.pickle' % direct_data, 'rb'), encoding='latin1')
+    # grab today's positions and append to old data
+    new_positions = token.account_positions()
+    positions_daily = token.append_to_df(positions_daily, new_positions)
 
-        # grab today's positions and append to old data
-        new_positions = token.account_positions()
-        positions_daily = token.append_to_df(positions_daily, new_positions)
+    # grab today's balances and append to old data
+    new_balances = token.account_balances()
+    balances_daily = token.append_to_df(balances_daily, new_balances)
 
-        # grab today's balances and append to old data
-        new_balances = token.account_balances()
-        balances_daily = token.append_to_df(balances_daily, new_balances)
+    # run trades and net profit data collection every Friday
+    if datetime.datetime.today().weekday() == 4:
+        # grab all trades since account creation
+        df_trades = token.account_trades()
 
-        # run trades and net profit data collection every Friday
-        if datetime.datetime.today().weekday() == 0:
-            # grab all trades since account creation
-            df_trades = token.account_trades()
+        # calculate today's P/L returns from trades
+        new_returns = token.account_returns(df_trades, endDay='')  # summarize trades into net profits
+        df_returns = token.append_to_df(df_returns, new_returns)
 
-            # calculate today's P/L returns from trades
-            new_returns = token.account_returns(df_trades, endDay='')  # summarize trades into net profits
-            df_returns = token.append_to_df(df_returns, new_returns)
-
-            # send success email
-            subject = str(datetime.date.today()) + "'s weekly success"
-            message = str(balances_daily.tail(7))
-            token.send_email(sender, receiver, subject, message, pickle_fn)
-
-        # pickle data
-        token.save([positions_daily, balances_daily, df_trades, df_returns], filename='%sdaily pickles/account_data_%s.pickle' %(direct_data, datetime.date.today()))
-        token.save([positions_daily, balances_daily, df_trades, df_returns], '%saccount_data.pickle' %direct_data)
-        print('save data')
-
-    except Exception as e:
-        # send fail email
-        print('%s error: %s' %(datetime.date.today(), str(e)))
-        subject = 'account_daily error'
-        message = """ account_daily.py error: """ + str(e)
+        # send success email
+        subject = str(datetime.date.today()) + "'s weekly success"
+        message = str(balances_daily.tail(7))
         token.send_email(sender, receiver, subject, message, pickle_fn)
+
+    # pickle data
+    token.save([positions_daily, balances_daily, df_trades, df_returns], filename='%sdaily pickles/account_data_%s.pickle' %(direct_data, datetime.date.today()))
+    token.save([positions_daily, balances_daily, df_trades, df_returns], '%saccount_data.pickle' %direct_data)
+    print('save data')
 
 else:
     # positions and balances

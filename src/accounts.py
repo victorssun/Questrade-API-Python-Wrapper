@@ -43,20 +43,23 @@ class QuestradeAccounts(questrade.QuestradeToken):
         dates = []
         for i in range(len(self.positions())):
             # for each current position, check if currentMarketValue is positive -- if shares of position is not sold
-            if self.positions()[i]['currentMarketValue'] >= 0:
-                # append date, symbol, and its current value to respective lists
-                dates.append(today_date)
-                symbol2 = str(self.positions()[i]['symbol'])
-                symbols.append(symbol2)
-
-                # currentMarketValue is in the stock's currency, therefore must convert USD stock value to CAD
-                if symbol2.find('.TO') != -1:
-                    # symbols that contain .TO must not be -1/greater than -1
-                    currentValues.append(self.positions()[i]['currentMarketValue'])
+            if self.positions()[i]['currentMarketValue']:
+                if self.positions()[i]['currentMarketValue'] >= 0:
+                    # append date, symbol, and its current value to respective lists
+                    dates.append(today_date)
+                    symbol2 = str(self.positions()[i]['symbol'])
+                    symbols.append(symbol2)
+    
+                    # currentMarketValue is in the stock's currency, therefore must convert USD stock value to CAD
+                    if symbol2.find('.TO') != -1:
+                        # symbols that contain .TO must not be -1/greater than -1
+                        currentValues.append(self.positions()[i]['currentMarketValue'])
+                    else:
+                        currentValues.append(self.positions()[i]['currentMarketValue'] * ex)
                 else:
-                    currentValues.append(self.positions()[i]['currentMarketValue'] * ex)
+                    print('%s skipped/sold.' %self.positions()[i]['symbol'])
             else:
-                print('%s skipped/sold.' %self.positions()[i]['symbol'])
+                    print('%s skipped/sold.' %self.positions()[i]['symbol'])
 
         # grab current combined USD and CAD cash, evaluated in CAD
         dates.append(today_date)
