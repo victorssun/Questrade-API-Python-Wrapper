@@ -6,7 +6,7 @@ Created on Thu Apr 26 00:33:45 2018
 Grab daily positions and balances data (not necessary as balances derived from positions) daily
 Save to pickle file: positions_daily, balances_daily
 
-Grab trades, returns (not necessary as returns derived from trades) every Friday (not necessary anymore because can just grab all activities whenever i want)
+Grabbing trades and returns not really necessary because we can grab them whenever we want and calculate them based on any day if we filter
 Save to pickle file: df_trades, df_returns
 """
 
@@ -58,9 +58,8 @@ if os.name == 'posix':
         # grab all trades since account creation
         df_trades = token.account_trades()
 
-        # calculate today's P/L returns from trades
-        new_returns = token.account_returns(df_trades, endDay='')  # summarize trades into net profits
-        df_returns = token.append_to_df(df_returns, new_returns)
+        # calculate today's P/L returns from trades, if want to calculate P/L from different day, filter df_trades
+        df_returns = token.account_returns(df_trades, endDay='')  # summarize trades into net profits
 
         # send success email
         subject = str(datetime.date.today()) + "'s weekly success"

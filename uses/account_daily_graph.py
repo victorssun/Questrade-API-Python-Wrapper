@@ -240,13 +240,6 @@ def candles2df(token, name, datestring, interval):
 ############
 ### MAIN ###
 ############
-#if os.name == 'nt':
-#    direct_token = 'C:/Users/A/Documents/K/Ongoing Projects/Investments/Questrade_Wrapper/src/'
-#    direct_data = 'C:/Users/A/Documents/K/Ongoing Projects/Investments/Questrade_Wrapper/uses/'
-#elif os.name == 'posix':
-#    direct_token = '/mnt/a_drive/investments/Questrade_Wrapper/src/'
-#    direct_data = '/mnt/a_drive/investments/Questrade_Wrapper/uses/'
-
 positions_daily, balances_daily, df_trades, df_returns = pickle.load(open('%saccount_data.pickle' % direct_data, 'rb'))
 
 # mask data for public
