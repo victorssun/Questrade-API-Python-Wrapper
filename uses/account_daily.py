@@ -66,8 +66,10 @@ if os.name == 'posix':
         message = str(balances_daily.tail(7))
         token.send_email(sender, receiver, subject, message, pickle_fn)
 
+        # pickle back up data
+        token.save([positions_daily, balances_daily, df_trades, df_returns], filename='%sdaily pickles/account_data_%s.pickle' %(direct_data, datetime.date.today()))
+
     # pickle data
-    token.save([positions_daily, balances_daily, df_trades, df_returns], filename='%sdaily pickles/account_data_%s.pickle' %(direct_data, datetime.date.today()))
     token.save([positions_daily, balances_daily, df_trades, df_returns], '%saccount_data.pickle' %direct_data)
     print('save data')
 
