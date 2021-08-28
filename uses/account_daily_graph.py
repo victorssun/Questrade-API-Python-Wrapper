@@ -5,8 +5,10 @@ Created on Mon Apr 30 22:49:27 2018
 @author: A
 Plot daily balances, positions, profits data
 """
-import sys, os, time
-import datetime, pickle
+import sys
+import os
+import datetime
+import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -31,16 +33,16 @@ def calculate_expected_return(df_transfers, expected_rate, series_name=None):
     :return: pd series, no date
     """
     if series_name:
-        expected_f = pd.Series(name=series_name, dtype=None)
+        expected_f = pd.Series(name=series_name, dtype=float)
     else:
         expected_f = pd.Series()
 
     # for each deposit/withdrawal, calculate expected return of cumulative equity from day of deposit to next deposit
     for i in range(len(df_transfers) - 1):
-        date_diff = df_transfers.iloc[i + 1]['date'] - df_transfers.iloc[i]['date']
+        date_diff = df_transfers.loc[i + 1, 'date'] - df_transfers.loc[i, 'date']
 
         # (annual rate)/(days in year)*(date difference)*(value of assets) = rough expected expected value based on the annual rate
-        expected_return = float(expected_rate) / 365 * date_diff.days * df_transfers.iloc[i]['cumulative']
+        expected_return = float(expected_rate) / 365 * date_diff.days * df_transfers.loc[i, 'cumulative']
         expected_f.loc[i + 1] = expected_return
 
     expected_f = expected_f.cumsum()  # convert to cumulative sum
@@ -57,7 +59,6 @@ def calculate_market_return(token, df_transfers):
     # select theoretical stocks: tsx, russell2000, sp500, nasdaq and get average return
     tsx = candles2df(token, 'tsx.in', datestring, interval)
     sp500 = candles2df(token, 'spx.in', datestring, interval)
-    # russell2000 = candles2df(token, 'tsx.in', datestring, interval)
     nasdaq = candles2df(token, 'comp.in', datestring, interval)
     
     bundle = pd.DataFrame([tsx['start'], (tsx['diff'] + sp500['diff'] + nasdaq['diff'])/3]).T
@@ -86,26 +87,26 @@ def calculate_market_return(token, df_transfers):
     return bundle2
 
 
-def calculate_real_returns(df_transfers, balances_daily):
+def calculate_real_returns(df_transfers, df_balances):
     """ Get actual real returns
 
     :param df_transfers: deposits and withdrawls from df_transfers
-    :param balances_daily: balances df
+    :param df_balances: balances df
     :return: df_actual
     """
-    # for each expected date, ensure balances_daily data are after the addition/withdrawal of assets
-    df_actual = balances_daily[['date', 'totalEquity']]
+    # for each expected date, ensure df_balances data are after the addition/withdrawal of assets
+    df_actual = df_balances[['date', 'totalEquity']]
     df_temp = pd.DataFrame()
     for i in range(len(df_expected) - 1):
-        # at each expected data, generate new bool column where balances_daily only exist greater than the date of each expected date
-        check = df_actual['date'] >= df_expected.iloc[i]['date']
+        # at each expected data, generate new bool column where df_balances only exist greater than the date of each expected date
+        check = df_actual['date'] >= df_expected.loc[i, 'date']
         check = check.rename(i)
         df_temp = pd.concat([df_temp, check], axis=1)
 
     # count all cells in the row: sum all True statements where actual return data is after the expected data, this is equivalent to the cumulative amount of assets held
     sums = df_temp.sum(axis=1) - 1  # to be used as index of df_expected to get actual returns instead of total equity
     for i in range(len(sums)):
-        df_actual.iloc[i]['totalEquity'] = df_actual.iloc[i]['totalEquity'] - df_transfers.iloc[sums.iloc[i]]['cumulative']
+        df_actual.loc[i, 'totalEquity'] = df_actual.loc[i, 'totalEquity'] - df_transfers.loc[sums.iloc[i], 'cumulative']
     df_actual.columns = ['date', 'actual']
 
     return df_actual
@@ -129,23 +130,19 @@ def plot_returns(df_expected, df_market, df_actual):
     ax1.plot(df_actual['date'], df_actual['actual'], linestyle='None', marker='.', markersize=1, label='actual')
     ax1.plot(df_market['start'], df_market['market'], label='market')
 
-    ax1.set_title('%s Returns' %balances_daily['date'].max())
+    ax1.set_title('%s Returns: %.2f actual, %.2f market' % (df_balances['date'].max(),
+                                                           df_actual.iloc[-1]['actual'] / max(df_transfers['cumulative']),
+                                                           df_market['market'].iloc[-1] / df_market['init'].iloc[-1]))
+
     ax1.set_xlim(left=datetime.date(2018, 1, 1))
     ax1.grid(axis='y', linestyle='--')
     ax1.legend(loc=2)
     
-#    # assume market return df is here
-#    fig.suptitle('actual: %.2f, market: %.2f' %(
-#    df_actual.iloc[-1]['actual'] / max(df_transfers['cumulative']),
-#    df_expected['market'].iloc[-1] / df_expected['init'].iloc[-1]),
-#    horizontalalignment='center',
-#    verticalalignment='bottom')
-
     # plot total equity, cash, and market value of all assets held
     ax2 = fig.add_subplot(212)
-    ax2.plot(balances_daily['date'], balances_daily['totalEquity'], linestyle='-', alpha=0.5, linewidth=1, label='total')
-    ax2.plot(balances_daily['date'], balances_daily['cash'], linestyle=':', alpha=0.5, linewidth=2, label='cash')
-    ax2.plot(balances_daily['date'], balances_daily['marketValue'], linestyle=':', alpha=0.5, linewidth=2, label='held')
+    ax2.plot(df_balances['date'], df_balances['totalEquity'], linestyle='-', alpha=0.5, linewidth=1, label='total')
+    ax2.plot(df_balances['date'], df_balances['cash'], linestyle=':', alpha=0.5, linewidth=2, label='cash')
+    ax2.plot(df_balances['date'], df_balances['marketValue'], linestyle=':', alpha=0.5, linewidth=2, label='held')
 
     ax2.set_yticklabels([])
     fig.autofmt_xdate()
@@ -153,10 +150,10 @@ def plot_returns(df_expected, df_market, df_actual):
     return fig
 
 
-def plot_portfolio(positions_daily, date='None', fig='', figposition=111):
+def plot_portfolio(df_positions, date='None', fig='', figposition=111):
     """ Plot current portfolio pie graph based on given date
 
-    :param positions_daily:
+    :param df_positions:
     :param date:
     :param fig:
     :param figposition:
@@ -171,9 +168,9 @@ def plot_portfolio(positions_daily, date='None', fig='', figposition=111):
     ax1.axis('equal')
     # select date
     if date == 'None':
-        date = positions_daily['date'].max()
+        date = df_positions['date'].max()
     # plot
-    pie = positions_daily[positions_daily['date']==date]
+    pie = df_positions[df_positions['date']==date]
     pie = pie.sort_values(by=['symbol'])
     ax1.pie(pie['value'], labels=pie['symbol'], autopct='%1.1f%%', startangle=0)
     ax1.set_title('%s Portfolio' %date)
@@ -228,7 +225,7 @@ def candles2df(token, name, datestring, interval):
     # convert isoformat to datetime
     for ea in df['start']:
         ea = dateutil.parser.parse(ea, ignoretz=True)
-        df['start'].iloc[counter] = ea.date()
+        df.loc[counter, 'start'] = ea.date()
         counter = counter + 1
     # select columns + % change
     df = df[['start', 'close']]
@@ -240,12 +237,12 @@ def candles2df(token, name, datestring, interval):
 ############
 ### MAIN ###
 ############
-positions_daily, balances_daily, df_trades, df_returns = pickle.load(open('%saccount_data.pickle' % direct_data, 'rb'))
+df_positions, df_balances, df_trades, df_returns, df_transfers = pickle.load(open('%saccount_data.pickle' % direct_data, 'rb'))
 
 # mask data for public
 if False:
-    positions_daily = accounts.AccountsUtils.randomize_dataframe(positions_daily)
-    balances_daily = accounts.AccountsUtils.randomize_dataframe(balances_daily)
+    df_positions = accounts.AccountsUtils.randomize_dataframe(df_positions)
+    df_balances = accounts.AccountsUtils.randomize_dataframe(df_balances)
     df_trades = accounts.AccountsUtils.randomize_dataframe(df_trades)
     df_returns = accounts.AccountsUtils.randomize_dataframe(df_returns)
 
@@ -253,7 +250,7 @@ if False:
 token = accounts.QuestradeAccounts(direct_token)
 
 # grab cumulative equity
-df_transfers = token.account_transfers()
+# df_transfers = token.account_transfers()
 df_transfers = df_transfers.append({'added': 0, 'date': pd.Timestamp.today(), 'cumulative': max(df_transfers['cumulative'])}, ignore_index=True)
 
 # generate expected, market, and actual returns data
@@ -262,12 +259,12 @@ df_expected = pd.concat([df_expected, calculate_expected_return(df_transfers, 0.
 
 df_market = calculate_market_return(token, df_transfers)
 
-df_actual = calculate_real_returns(df_transfers, balances_daily)
+df_actual = calculate_real_returns(df_transfers, df_balances)
 
 fig1 = plot_returns(df_expected, df_market, df_actual)
-fig2 = plot_portfolio(positions_daily)
+fig2 = plot_portfolio(df_positions)
 fig3 = plot_profits(df_returns)
 
-fig1.savefig('returns.png', format='png')
-fig2.savefig('portfolio.png', format='png')
-fig3.savefig('profits.png', format='png')
+fig1.savefig(direct_data + 'returns.png', format='png')
+fig2.savefig(direct_data + 'portfolio.png', format='png')
+fig3.savefig(direct_data + 'profits.png', format='png')

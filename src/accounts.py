@@ -15,7 +15,6 @@ import smtplib
 import sqlite3
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-
 import numpy as np
 import pandas as pd
 
@@ -30,12 +29,12 @@ class QuestradeAccounts(questrade.QuestradeToken):
         """
         Grab today's positions data and append to existing data
 
-        :return: positions_daily_temp
+        :return: df_positions_temp
         """
 
         # grab data required for analysis and collection
         ex = self.ex_rate()  # CAD/USD exchange rate
-        today_date = datetime.date.today()
+        today_date = pd.to_datetime(datetime.date.today())
 
         # grab today's/current positions: their symbols, current value, and current date and append to lists
         symbols = []
@@ -57,9 +56,9 @@ class QuestradeAccounts(questrade.QuestradeToken):
                     else:
                         currentValues.append(self.positions()[i]['currentMarketValue'] * ex)
                 else:
-                    print('%s skipped/sold.' %self.positions()[i]['symbol'])
+                    print('%s skipped/sold.' % self.positions()[i]['symbol'])
             else:
-                    print('%s skipped/sold.' %self.positions()[i]['symbol'])
+                    print('%s skipped/sold.' % self.positions()[i]['symbol'])
 
         # grab current combined USD and CAD cash, evaluated in CAD
         dates.append(today_date)
@@ -68,29 +67,34 @@ class QuestradeAccounts(questrade.QuestradeToken):
         currentValues.append(cash)
 
         # ensure format matches current columns
-        positions_daily_temp = pd.DataFrame({'date': dates, 'symbol': symbols, 'value': currentValues})
+        df_positions_temp = pd.DataFrame({'date': dates, 'symbol': symbols, 'value': currentValues})
 
-        return positions_daily_temp
+        return df_positions_temp
 
     def account_balances(self):
         """
-        Grab today's balances data. Balances can be derived from positions_daily. Or grab directly from QT API balances.
+        Grab today's balances data. Balances can be derived from df_positions. Or grab directly from QT API balances.
 
-        :return: balances_daily
+        :return: df_balances
         """
         # grab data required for analysis and collection
         ex = self.ex_rate()  # CAD/USD exchange rate
-        today_date = datetime.date.today()
+        today_date = pd.to_datetime(datetime.date.today())
 
         # grab today's/current balance data: date, exchange rate, cash, current stock value, total equity
-        balances_daily_temp = self.balances()
-        balances_daily_temp = [balances_daily_temp.get(key) for key in ['cash', 'marketValue', 'totalEquity']]
-        balances_daily_temp.append(ex)
-        balances_daily_temp.append(today_date)
-        balances_daily_temp = pd.DataFrame(balances_daily_temp).T
-        balances_daily_temp.columns = ['cash', 'marketValue', 'totalEquity', 'exchangeRate', 'date']  # must match current data to be append
+        df_balances_temp = self.balances()
+        df_balances_temp = [df_balances_temp.get(key) for key in ['cash', 'marketValue', 'totalEquity']]
+        df_balances_temp.append(ex)
+        df_balances_temp.append(today_date)
+        
+        # grab cumulative deposits/withdrawals
+        df_transfers = self.account_transfers()        
+        df_balances_temp.append(df_transfers['cumulative'].iloc[-1])
+        
+        df_balances_temp = pd.DataFrame(df_balances_temp).T
+        df_balances_temp.columns = ['cash', 'marketValue', 'totalEquity', 'exchangeRate', 'date', 'cumulative']  # must match current data to be append
 
-        return balances_daily_temp
+        return df_balances_temp
 
     def account_trades(self, start_day='', end_day=''):
         """
@@ -229,6 +233,10 @@ class QuestradeAccounts(questrade.QuestradeToken):
 
         # convert date isoformat to datetime
         df_trades['date'] = pd.to_datetime(df_trades['date'].str.split('T').str[0])
+
+        # remove side and currency cols
+        del df_trades['side']
+        del df_trades['currency']
 
         return df_trades
 
@@ -457,11 +465,11 @@ class AccountsUtils:
 
     @staticmethod
     def sql_to_df(db_filename):
-        """ Convert SQLite db to all four dataframes: positions, balances, trades, returns. For visualization.
+        """ Convert SQLite db to all four dataframes: positions, balances, trades, returns, transfers. For visualization.
         Note: datetime/pandas timestamp is string, float/int is numpy float/int... therefore do not save into pickle
 
         :param db_filename: filepath and filename of sqlite db
-        :return: positions_daily, balances_daily, df_trades, df_returns
+        :return: df_positions, df_balances, df_trades, df_returns, df_transfers
         """
 
         conn = sqlite3.connect(db_filename)
@@ -473,13 +481,13 @@ class AccountsUtils:
 
             return headers
 
-        cursor.execute('SELECT * FROM balances_daily')
-        balances_daily = pd.DataFrame(cursor.fetchall())
-        balances_daily.columns = get_table_headers('balances_daily')
+        cursor.execute('SELECT * FROM df_balances')
+        df_balances = pd.DataFrame(cursor.fetchall())
+        df_balances.columns = get_table_headers('df_balances')
 
-        cursor.execute('SELECT * FROM positions_daily')
-        positions_daily = pd.DataFrame(cursor.fetchall())
-        positions_daily.columns = get_table_headers('positions_daily')
+        cursor.execute('SELECT * FROM df_positions')
+        df_positions = pd.DataFrame(cursor.fetchall())
+        df_positions.columns = get_table_headers('df_positions')
 
         cursor.execute('SELECT * FROM df_trades')
         df_trades = pd.DataFrame(cursor.fetchall())
@@ -489,10 +497,14 @@ class AccountsUtils:
         df_returns = pd.DataFrame(cursor.fetchall())
         df_returns.columns = get_table_headers('df_returns')
 
+        cursor.execute('SELECT * FROM df_returns')
+        df_returns = pd.DataFrame(cursor.fetchall())
+        df_returns.columns = get_table_headers('df_returns')
+
         conn.commit()
         conn.close()
 
-        return positions_daily, balances_daily, df_trades, df_returns
+        return df_positions, df_balances, df_trades, df_returns, df_transfers
 
     @staticmethod
     def maxDate(cursor, sql_statement):
@@ -509,42 +521,43 @@ class AccountsUtils:
         return max_date
 
     @staticmethod
-    def format_balances_daily(balances_daily, max_date=datetime.date(2000, 1, 1)):
-        """ Convert balances_daily df to formatted list to be fed into sql db
+    def format_df_balances(df_balances, max_date=datetime.date(2000, 1, 1)):
+        """ Convert df_balances df to formatted list to be fed into sql db
 
-        :param balances_daily: dataframe
+        :param df_balances: dataframe
         :param max_date: restrict dataframe based on max date
         :return: list
         """
-        list_balances_daily = []
-        for i in range(len(balances_daily)):
-            if balances_daily['date'].iloc[i] > max_date:
-                list_balances_daily.append((
-                    datetime.datetime.strftime(balances_daily['date'].iloc[i], '%Y-%m-%d'),
-                    balances_daily['exchangeRate'].iloc[i],
-                    balances_daily['cash'].iloc[i],
-                    balances_daily['marketValue'].iloc[i],
-                    balances_daily['totalEquity'].iloc[i]
+        list_df_balances = []
+        for i in range(len(df_balances)):
+            if df_balances['date'].iloc[i] > pd.to_datetime(max_date):
+                list_df_balances.append((
+                    datetime.datetime.strftime(df_balances['date'].iloc[i], '%Y-%m-%d'),
+                    df_balances['exchangeRate'].iloc[i],
+                    df_balances['cumulative'].iloc[i],
+                    df_balances['cash'].iloc[i],
+                    df_balances['marketValue'].iloc[i],
+                    df_balances['totalEquity'].iloc[i]
                 ))
-        return list_balances_daily
+        return list_df_balances
 
     @staticmethod
-    def format_positions_daily(positions_daily, max_date=datetime.date(2000, 1, 1)):
-        """ Convert positions_daily df to formatted list to be fed into sql db
+    def format_df_positions(df_positions, max_date=datetime.date(2000, 1, 1)):
+        """ Convert df_positions df to formatted list to be fed into sql db
 
-        :param positions_daily: dataframe
+        :param df_positions: dataframe
         :param max_date: restrict dataframe based on max date
         :return: list
         """
-        list_positions_daily = []
-        for i in range(len(positions_daily)):
-            if positions_daily['date'].iloc[i] > max_date:
-                list_positions_daily.append((
-                    datetime.datetime.strftime(positions_daily['date'].iloc[i], '%Y-%m-%d'),
-                    positions_daily['symbol'].iloc[i],
-                    positions_daily['value'].iloc[i]
+        list_df_positions= []
+        for i in range(len(df_positions)):
+            if df_positions['date'].iloc[i] > pd.to_datetime(max_date):
+                list_df_positions.append((
+                    datetime.datetime.strftime(df_positions['date'].iloc[i], '%Y-%m-%d'),
+                    df_positions['symbol'].iloc[i],
+                    df_positions['value'].iloc[i]
                 ))
-        return list_positions_daily
+        return list_df_positions
 
     @staticmethod
     def format_df_trades(df_trades, max_date=datetime.date(2000, 1, 1)):
@@ -556,12 +569,10 @@ class AccountsUtils:
         """
         list_df_trades = []
         for i in range(len(df_trades)):
-            if df_trades['date'].iloc[i] > max_date:
+            if df_trades['date'].iloc[i] > pd.to_datetime(max_date):
                 list_df_trades.append((
                     datetime.datetime.strftime(df_trades['date'].iloc[i], '%Y-%m-%d'),
                     df_trades['symbol'].iloc[i],
-                    df_trades['currency'].iloc[i],
-                    df_trades['side'].iloc[i],
                     df_trades['quantity'].iloc[i],
                     df_trades['totalCost'].iloc[i]
                 ))
@@ -577,7 +588,7 @@ class AccountsUtils:
         """
         list_df_returns = []
         for i in range(len(df_returns)):
-            if df_returns['date'].iloc[i] > max_date:
+            if df_returns['date'].iloc[i] > pd.to_datetime(max_date):
                 list_df_returns.append((
                     datetime.datetime.strftime(df_returns['date'].iloc[i], '%Y-%m-%d'),
                     df_returns['symbol'].iloc[i],
@@ -586,6 +597,23 @@ class AccountsUtils:
                 ))
         return list_df_returns
 
+    @staticmethod
+    def format_df_transfers(df_transfers, max_date=datetime.date(2000, 1, 1)):
+        """ Convert df_transfers to formatted list to be fed into sql db
+
+        :param df_transfers: dataframe
+        :param max_date: restrict dataframe based on max date
+        :return: list
+        """
+        list_df_transfers = []
+        for i in range(len(df_transfers)):
+            if df_transfers['date'].iloc[i] > pd.to_datetime(max_date):
+                list_df_transfers.append((
+                    datetime.datetime.strftime(df_transfers['date'].iloc[i], '%Y-%m-%d'),
+                    df_transfers['added'].iloc[i],
+                    df_transfers['cumulative'].iloc[i]
+                ))
+        return list_df_transfers
 
 #####################
 ##### MAIN CODE #####
@@ -604,18 +632,18 @@ if __name__ == "__main__":
     token.check_access()
 
     # grab old data
-    positions_daily, balances_daily, df_trades, df_returns = pickle.load(open('%saccount_data.pickle' % direct_data, 'rb'), encoding='latin1')
+    df_positions, df_balances, df_trades, df_returns, df_transfers = pickle.load(open('%saccount_data.pickle' % direct_data, 'rb'), encoding='latin1')
 
     # grab new positions
     new_positions = token.account_positions()
-    positions_daily = token.append_to_df(positions_daily, new_positions)
+    df_positions = token.append_to_df(df_positions, new_positions)
 
     # grab new balances
     new_balances = token.account_balances()
-    balances_daily = token.append_to_df(balances_daily, new_balances)
-    # print(balances_daily.tail(7))
+    df_balances = token.append_to_df(df_balances, new_balances)
+    # print(df_balances.tail(7))
 
-    test = AccountsUtils.randomize_dataframe(balances_daily)
+    test = AccountsUtils.randomize_dataframe(df_balances)
     print(test.tail(7))
 
     # grab trades
@@ -625,12 +653,12 @@ if __name__ == "__main__":
     # new_returns = token.account_returns(df_trades, endDay='')  # summarize trades into net profits
     # df_returns = token.append_to_df(df_returns, new_returns)
 
-    # token.save([positions_daily, balances_daily, df_trades, df_returns], '%saccount_data.pickle' %direct_data)
+    # token.save([df_positions, df_balances, df_trades, df_returns, df_transfers], '%saccount_data.pickle' %direct_data)
 
-    df_transfers = token.account_transfers()
-    print(df_transfers)
+    # df_transfers = token.account_transfers()
+#    print(df_transfers)
 
-    # positions_converted, balances_converted, trades_converted, returns_converted = AccountsUtils.sql_to_df(direct_data + 'account_data.db')
+    # positions_converted, balances_converted, trades_converted, returns_converted, transfers_converted = AccountsUtils.sql_to_df(direct_data + 'account_data.db')
 
     print('windows ran. data not saved.')
 

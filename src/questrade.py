@@ -4,7 +4,7 @@ Created on Thu Apr 19 21:10:12 2018
 
 @author: A
 Questrade API wrapper
-- requires JSON formatted API token. System is down usually at 3am-6am EST.
+- requires JSON formatted API token. System is down usually at 230am-530am EST.
 
 functions: positions, balances, executions, orders, activities, symbs, candles, ex_rate
 
