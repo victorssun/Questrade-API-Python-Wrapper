@@ -497,9 +497,9 @@ class AccountsUtils:
         df_returns = pd.DataFrame(cursor.fetchall())
         df_returns.columns = get_table_headers('df_returns')
 
-        cursor.execute('SELECT * FROM df_returns')
-        df_returns = pd.DataFrame(cursor.fetchall())
-        df_returns.columns = get_table_headers('df_returns')
+        cursor.execute('SELECT * FROM df_transfers')
+        df_transfers = pd.DataFrame(cursor.fetchall())
+        df_transfers.columns = get_table_headers('df_transfers')
 
         conn.commit()
         conn.close()
