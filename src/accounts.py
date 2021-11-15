@@ -434,7 +434,7 @@ class QuestradeAccounts(questrade.QuestradeToken):
 
 
 class AccountsUtils:
-    """ Utility functions for QuuestradeAccounts: mostly just DF to SQL format conversions.
+    """ Utility functions for QuestradeAccounts: mostly just DF to SQL format conversions.
     TODO: Comparison of Timestamp with datetime.date is deprecated in order to match the standard library behavior
     """
 

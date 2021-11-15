@@ -24,8 +24,18 @@ class IntervalType:
     FourHours = 'FourHours'
 
 
+TIMEOUT = 30.0
+
+
 class QuestradeToken:
-    def __init__(self, direct, refresh_token=None):
+    def __init__(self, direct, refresh_token=None, account_index=0):
+        """
+
+        Args:
+            direct: directory that stores refreshtoken_windows/linux.json
+            refresh_token: If no refresh token input, automatically grab token from direct
+            account_index: index number of account
+        """
         self.directory = direct
 
         self.refresh_token = refresh_token
@@ -35,11 +45,14 @@ class QuestradeToken:
         self.url = None
         self.account_number = None
 
-        self.initialize()
+        self.initialize(account_index)
 
-    def initialize(self):
+    def initialize(self, account_index):
         """
         Set refresh token, expiry date, access token, and account number properties
+
+        Args:
+            account_index: select account_index
 
         :return: bool success
         """
@@ -63,7 +76,7 @@ class QuestradeToken:
                 print('initalization failed at loading access')
                 return False
 
-        self.account_number = self.get_number()
+        self.account_number = self.get_number(account_index)
 
         print('initialization success')
         return True
@@ -91,8 +104,14 @@ class QuestradeToken:
 
     # --- PUBLIC ---
 
+    def get_accounts(self):
+        # get accounts information
+        url2 = self.url + 'v1/accounts/'
+        success, r = self._send_request(url2)
+        return str(r['accounts'])
+
     def get_number(self, i=0):
-        # get accounts information/account number, for account calls
+        # get a single accounts account number based on index, for account calls
         # TODO: if more QT accounts, need to be updated -- could be 'TFSA', 'Cash', 'Margin'
         url2 = self.url + 'v1/accounts/'
         success, r = self._send_request(url2)
@@ -205,7 +224,7 @@ class QuestradeToken:
             'refresh_token': self.refresh_token,
             }
         time_before = time.time()
-        r = requests.get(url, params=data)
+        r = requests.get(url, params=data, timeout=TIMEOUT)
         if str(r) == '<Response [200]>':
             response_data = r.json()
             self.time_after = time_before + response_data['expires_in']
@@ -310,9 +329,9 @@ class QuestradeToken:
         :return: bool success, data
         """
         if data == None:
-            r = requests.get(url, headers={'authorization': self.access_token})
+            r = requests.get(url, headers={'authorization': self.access_token}, timeout=TIMEOUT)
         else:
-            r = requests.get(url, params=data, headers={'authorization': self.access_token})
+            r = requests.get(url, params=data, headers={'authorization': self.access_token}, timeout=TIMEOUT)
 
         if str(r) == '<Response [200]>':
             self.time_after =  time.time() + 1800 # 30 mins
