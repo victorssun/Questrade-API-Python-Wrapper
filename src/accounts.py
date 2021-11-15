@@ -22,8 +22,8 @@ import questrade
 
 
 class QuestradeAccounts(questrade.QuestradeToken):
-    def __init__(self, token_directory):
-        super().__init__(token_directory)
+    def __init__(self, token_directory, account_index=0):
+        super().__init__(token_directory, account_index)
 
     def account_positions(self):
         """
