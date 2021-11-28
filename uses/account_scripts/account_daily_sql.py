@@ -14,10 +14,10 @@ import sys
 
 if os.name == 'nt':
     investment_directory = 'C:/Users/A/Documents/K/Ongoing Projects/Investments/Questrade_Wrapper/'
-    direct_data = 'C:/Users/A/Documents/K/Ongoing Projects/Investments/Questrade_Wrapper/uses/'
+    direct_data = 'C:/Users/A/Documents/K/Ongoing Projects/Investments/Questrade_Wrapper/uses/account_scripts/'
 elif os.name == 'posix':
     investment_directory = '/mnt/a_drive/investments/Questrade_Wrapper/'
-    direct_data = '/mnt/a_drive/investments/Questrade_Wrapper/uses/'
+    direct_data = '/mnt/a_drive/investments/Questrade_Wrapper/uses/account_scripts/'
 sys.path.append('%ssrc/' % investment_directory)
 from accounts import AccountsUtils
 # from src.accounts import AccountsUtils

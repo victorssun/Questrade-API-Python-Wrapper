@@ -16,10 +16,10 @@ import dateutil
 
 if os.name == 'nt':
     direct_token = 'C:/Users/A/Documents/K/Ongoing Projects/Investments/Questrade_Wrapper/src/'
-    direct_data = 'C:/Users/A/Documents/K/Ongoing Projects/Investments/Questrade_Wrapper/uses/'
+    direct_data = 'C:/Users/A/Documents/K/Ongoing Projects/Investments/Questrade_Wrapper/uses/account_scripts/'
 elif os.name == 'posix':
     direct_token = '/mnt/a_drive/investments/Questrade_Wrapper/src/'
-    direct_data = '/mnt/a_drive/investments/Questrade_Wrapper/uses/'
+    direct_data = '/mnt/a_drive/investments/Questrade_Wrapper/uses/account_scripts/'
 sys.path.append(direct_token)
 import accounts
 # import src.accounts as accounts

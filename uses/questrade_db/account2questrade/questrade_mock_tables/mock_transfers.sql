@@ -1,0 +1,10 @@
+insert into transfers (account_id, date_id, deposit) values (1, 60, 153);
+insert into transfers (account_id, date_id, deposit) values (2, 94, -74);
+insert into transfers (account_id, date_id, deposit) values (1, 64, 262);
+insert into transfers (account_id, date_id, deposit) values (1, 80, -451);
+insert into transfers (account_id, date_id, deposit) values (1, 24, 846);
+insert into transfers (account_id, date_id, deposit) values (2, 65, 474);
+insert into transfers (account_id, date_id, deposit) values (1, 18, 242);
+insert into transfers (account_id, date_id, deposit) values (1, 76, -634);
+insert into transfers (account_id, date_id, deposit) values (2, 30, 849);
+insert into transfers (account_id, date_id, deposit) values (1, 58, 972);

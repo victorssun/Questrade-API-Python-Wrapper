@@ -1,0 +1,10 @@
+insert into trades (account_id, symbol_id, date_id, quantity, value) values (2, 6, 59, -13, -373);
+insert into trades (account_id, symbol_id, date_id, quantity, value) values (1, 34, 79, 13, -285);
+insert into trades (account_id, symbol_id, date_id, quantity, value) values (2, 9, 99, -18, -511);
+insert into trades (account_id, symbol_id, date_id, quantity, value) values (1, 17, 9, -3, -463);
+insert into trades (account_id, symbol_id, date_id, quantity, value) values (2, 37, 39, -4, -604);
+insert into trades (account_id, symbol_id, date_id, quantity, value) values (2, 33, 75, 7, 1448);
+insert into trades (account_id, symbol_id, date_id, quantity, value) values (2, 21, 83, 9, -717);
+insert into trades (account_id, symbol_id, date_id, quantity, value) values (2, 9, 27, 19, 133);
+insert into trades (account_id, symbol_id, date_id, quantity, value) values (1, 27, 59, 25, 300);
+insert into trades (account_id, symbol_id, date_id, quantity, value) values (2, 22, 59, 32, 1626);

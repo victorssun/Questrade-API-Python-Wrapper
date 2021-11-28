@@ -23,7 +23,7 @@ import accounts
 
 
 # set directories for pickle file and token
-direct_data = '%suses/' % investment_directory
+direct_data = '%suses/account_scripts/' % investment_directory
 direct_token = '%ssrc/' % investment_directory
 
 # generate instance

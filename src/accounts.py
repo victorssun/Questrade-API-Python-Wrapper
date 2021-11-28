@@ -4,7 +4,7 @@ Created on Thu Apr 26 00:33:45 2018
 
 @author: A
 
-Additional methods to collect account data
+Additional methods to collect account data into pickle
 """
 
 import datetime
@@ -615,6 +615,120 @@ class AccountsUtils:
                 ))
         return list_df_transfers
 
+
+class AccountType:
+    # map account index to specific account
+    TFSA = ('TFSA', 0)
+    MARGIN = ('MARGIN', 1)
+
+
+class AccountQuestradeUtils:
+    """ Utility functions for questrade.db """
+    @staticmethod
+    def add_unique_dates_to_db(conn, cursor, list_dates):
+        """ Add new dates to questrade's date table if it doesn't exist
+
+        Args:
+            conn:
+            cursor:
+            list_dates: list of 'YYYY-MM-DD'
+
+        Returns:
+
+        """
+        for date in list_dates:
+            cursor.execute("SELECT date FROM dates WHERE date = '{}'".format(date))
+            list_dates = cursor.fetchall()
+            if not list_dates:
+                cursor.execute("INSERT INTO dates(date) VALUES (?)", (date,))
+                print(date + ' added to date table')
+                conn.commit()
+
+    @staticmethod
+    def add_unique_symbs_to_db(conn, cursor, list_symbols):
+        """ Add new symbols to questrade's symbols table if it doesn't exist
+
+        Args:
+            conn:
+            cursor:
+            list_symbols: list of symbs
+
+        Returns:
+
+        """
+        for symb in list_symbols:
+            cursor.execute("SELECT symbol FROM symbols WHERE symbol = '{}'".format(symb))
+            if not cursor.fetchone():
+                cursor.execute("INSERT INTO symbols (symbol) VALUES (?)", (symb,))
+                print(symb + ' added to symbols table')
+                conn.commit()
+
+    @staticmethod
+    def add_exchange_rate(conn, cursor, date, cad_usd):
+        """ Add CAD/USD exchange rate given the date
+
+        Args:
+            conn:
+            cursor:
+            date: 'YYYY-MM-DD'
+            cad_usd: CAD/USD
+
+        Returns:
+
+        """
+        cursor.execute("INSERT INTO exchange_rate(date_id, cad_usd) \
+                       VALUES ((SELECT date_id from dates WHERE date=?), ?)", (date, cad_usd))
+        conn.commit()
+
+    @staticmethod
+    def add_new_trades_to_db(conn, cursor, account_type, new_trades):
+        """ Given a trades dataframe, add to questrade's trades table
+
+        Args:
+            conn:
+            cursor:
+            account_type:
+            new_trades: df
+
+        Returns:
+
+        """
+        list_trades = []
+        for i in range(len(new_trades)):
+            list_trades.append((account_type, new_trades.iloc[i]['symbol'],
+                                pd.to_datetime(new_trades.iloc[i]['date']).strftime('%Y-%m-%d'),
+                                new_trades.iloc[i]['quantity'], new_trades.iloc[i]['totalCost']))
+        cursor.executemany("INSERT INTO trades(account_id, symbol_id, date_id, quantity, value) \
+                           VALUES ((SELECT account_id from accounts WHERE type=?), \
+                                   (SELECT symbol_id from symbols WHERE symbol=?), \
+                                   (SELECT date_id from dates WHERE date=?), ?, ?)", list_trades)
+        conn.commit()
+
+    @staticmethod
+    def add_new_transfers_to_db(conn, cursor, account_type, new_transfers):
+        list_transfers = []
+        for i in range(len(new_transfers)):
+            list_transfers.append(
+                (account_type, pd.to_datetime(new_transfers.iloc[i]['date']).strftime('%Y-%m-%d'),
+                 new_transfers.iloc[i]['added']))
+        cursor.executemany("INSERT INTO transfers(account_id, date_id, deposit) \
+                           VALUES ((SELECT account_id from accounts WHERE type=?), (SELECT date_id from dates WHERE date=?), ?)", \
+                           list_transfers)
+        conn.commit()
+
+    @staticmethod
+    def add_new_positions_to_db(conn, cursor, account_type, new_positions):
+        list_positions = []
+        for i in range(len(new_positions)):
+            list_positions.append((account_type, new_positions.iloc[i]['symbol'], pd.to_datetime(new_positions.iloc[i]['date']).strftime('%Y-%m-%d'), new_positions.iloc[i]['value']))
+
+        cursor.executemany("INSERT INTO positions(account_id, symbol_id, date_id, value) \
+                           VALUES ((SELECT account_id from accounts WHERE type=?), \
+                                   (SELECT symbol_id from symbols WHERE symbol=?), \
+                                   (SELECT date_id from dates WHERE date=?), ?)", list_positions)
+        conn.commit()
+
+
 #####################
 ##### MAIN CODE #####
 #####################
@@ -625,7 +739,7 @@ if __name__ == "__main__":
         investment_directory = 'C:/Users/A/Documents/K/Ongoing Projects/Investments/Questrade_Wrapper/'  # need for pickle load
     elif os.name == 'posix':
         investment_directory = '/mnt/a_drive/investments/'
-    direct_data = '%suses/' % investment_directory
+    direct_data = '%suses/account_scripts/' % investment_directory
     direct_token = '%ssrc/' % investment_directory
 
     token = QuestradeAccounts(direct_token)
