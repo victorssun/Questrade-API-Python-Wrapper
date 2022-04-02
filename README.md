@@ -14,7 +14,6 @@ Example of generating instance of QT wrapper:
 from src import questrade 
 
 token = questrade.QuestradeToken(<FILEPATH TO TOKEN .JSON>, <ACCOUNT_INDEX>)
-
 token.get_accounts()  # list of dict of accounts data
 ```
 
@@ -23,7 +22,6 @@ Example of generating instance of QT accounts wrapper:
 from src import accounts 
 
 token = accounts.QuestradeAccount(<FILEPATH TO TOKEN .JSON>, <ACCOUNT_INDEX>)
-
 token.positions()  # dataframe of current positions portfolio
 ```
 
