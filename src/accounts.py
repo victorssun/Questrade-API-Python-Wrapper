@@ -19,11 +19,12 @@ import numpy as np
 import pandas as pd
 
 import questrade
+# import src.questrade as questrade
 
 
 class QuestradeAccounts(questrade.QuestradeToken):
     def __init__(self, token_directory, account_index=0):
-        super().__init__(token_directory, account_index)
+        super().__init__(direct=token_directory, account_index=account_index)
 
     def account_positions(self):
         """
@@ -620,7 +621,7 @@ class AccountsUtils:
 class AccountType:
     # map account index to specific account
     TFSA = ('TFSA', 0)
-    MARGIN = ('MARGIN', 1)
+    FHSA = ('FHSA', 1)
 
 
 class AccountQuestradeUtils:
